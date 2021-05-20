@@ -35,8 +35,6 @@ def solve():
                 "Stock Splits": values.iloc[i]["Stock Splits"],
             }
 
-            print(values.iloc[i])
-
         data = {
             "length": values.shape[0],
             "data": res,
