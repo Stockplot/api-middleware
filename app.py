@@ -25,14 +25,14 @@ def solve():
         for i in range(0, values.shape[0]):
 
             res[i] = {
-                "Date": values.iloc[i].name.strftime("%Y-%m-%d"),
-                "Open": values.iloc[i]["Open"],
-                "High": values.iloc[i]["High"],
-                "Low": values.iloc[i]["Low"],
-                "Close": values.iloc[i]["Close"],
-                "Volume": values.iloc[i]["Volume"],
-                "Dividends": values.iloc[i]["Dividends"],
-                "Stock Splits": values.iloc[i]["Stock Splits"],
+                "date": values.iloc[i].name.strftime("%Y-%m-%d"),
+                "open": values.iloc[i]["Open"],
+                "high": values.iloc[i]["High"],
+                "low": values.iloc[i]["Low"],
+                "close": values.iloc[i]["Close"],
+                "volume": values.iloc[i]["Volume"],
+                "dividends": values.iloc[i]["Dividends"],
+                "stock splits": values.iloc[i]["Stock Splits"],
             }
 
         data = {
