@@ -88,6 +88,8 @@ def BBands():
         uband = []
         lband = []
 
+        res = {}
+
         for price in close:
 
             price_sum += price
@@ -96,34 +98,25 @@ def BBands():
             if idx >= window:
                 price_sum -= close[idx - window]
                 avg = price_sum / window
-                moving_average.append(avg)
 
                 for i in range(idx - window, idx + 1):
                     sd_sum += (close[i] - avg) ** 2
                 sd_sum /= window
-                uband.append(avg + sdfactor * (sd_sum ** 0.5))
-                lband.append(avg - sdfactor * (sd_sum ** 0.5))
+
+                res[idx - window] = {
+                    "close": close[idx - window],
+                    "date": values.iloc[idx - window].name.strftime("%Y-%m-%d"),
+                    "moving_average": avg,
+                    "upper_band": avg + sdfactor * (sd_sum ** 0.5),
+                    "lower_band": avg - sdfactor * (sd_sum ** 0.5)
+                }
 
             idx += 1
 
-        print(len(moving_average))
-        print(len(uband))
-        print(len(lband))
-
-        ma = {}
-        ub = {}
-        lb = {}
-
-        for i in range(0, len(moving_average)):
-            ma[i] = moving_average[i]
-
-        for i in range(0, len(uband)):
-            ub[i] = uband[i]
-
-        for i in range(0, len(lband)):
-            lb[i] = lband[i]
-
-        data = {"moving_average": ma, "upper_band": ub, "lower_band": lb}
+        data = {
+            "data": res,
+            "length": idx - window
+        }
 
         return jsonify(data)
 
