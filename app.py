@@ -121,7 +121,7 @@ def BBands():
         return jsonify(data)
 
 
-### Sample request body for /
+### Sample request body for /getRSI
 
 # {
 #     "context": {
@@ -142,13 +142,13 @@ def RSIndex():
             start=context["start"], end=context["end"]
         )
 
-        res = {}
+        # res = {}
 
-        for i in range(0, values.shape[0]):
-            res[i] = {
-                "date": values.iloc[i].name.strftime("%Y-%m-%d"),
-                "close": values.iloc[i]["Close"],
-            }
+        # for i in range(0, values.shape[0]):
+        #     res[i] = {
+        #         "date": values.iloc[i].name.strftime("%Y-%m-%d"),
+        #         "close": values.iloc[i]["Close"],
+        #     }
 
         points_gain = []
         points_lost = []
@@ -167,8 +167,7 @@ def RSIndex():
         print(points_lost)
         print(points_gain)
 
-
-        pl_avg = sum(points_lost)*Decimal(-1) / len(points_lost)
+        pl_avg = sum(points_lost) * Decimal(-1) / len(points_lost)
         pg_avg = sum(points_gain) / len(points_gain)
 
         print(pl_avg)
@@ -195,6 +194,67 @@ def RSIndex():
         }
 
         return jsonify(data)
+
+
+### Sample request body for /getMACD
+# Note - make sure gap b/w start -end > 27 days
+# {
+#     "context": {
+#         "ticker": "MSFT",
+#         "start": "2018-01-01",
+#         "end": "2020-11-30"
+#     }
+# }
+
+@app.route("/getMACD", methods=["POST"])
+@cross_origin()
+def get_MACD():
+    context = request.json["context"]
+    if request.method == "POST":
+
+        values = yf.Ticker(context["ticker"]).history(
+            start=context["start"], end=context["end"]
+        )
+
+        daily_close = []
+
+        for i in range(0, values.shape[0]):
+            daily_close.append(
+                Decimal(values.iloc[i]["Close"]),
+            )
+
+        tweleve_day_ma = []
+        twentysix_day_ma = []
+
+        macd_val = []
+        mv = {}
+
+        data = {}
+
+        try:
+            for i in range(0, values.shape[0] - 12):
+                tweleve_day_ma.append(sum(daily_close[i : i + 12]) / 12)
+
+            for i in range(0, values.shape[0] - 26):
+                twentysix_day_ma.append(sum(daily_close[i : i + 26]) / 26)
+
+            for i in range(0, len(twentysix_day_ma)):
+                macd_val.append(tweleve_day_ma[i + 14] - twentysix_day_ma[i])
+
+            for i in range(0, len(macd_val)):
+                mv[i] = str(macd_val[i])
+
+            data = {
+                "MACD Values": mv,
+            }
+            return jsonify(data)
+
+        except:
+            print("Date range less than 1 month")
+            data = {
+                "Error" : "no Data"
+            }
+            return
 
 
 if __name__ == "__main__":
