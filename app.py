@@ -78,8 +78,8 @@ def BBands():
         )
 
         close = values["Close"]
-        window = context["window"]
-        sdfactor = context["sdfactor"]
+        window = int(context["window"])
+        sdfactor = float(context["sdfactor"])
 
         idx = 0
         price_sum = 0
