@@ -108,15 +108,12 @@ def BBands():
                     "date": values.iloc[idx - window].name.strftime("%Y-%m-%d"),
                     "moving_average": avg,
                     "upper_band": avg + sdfactor * (sd_sum ** 0.5),
-                    "lower_band": avg - sdfactor * (sd_sum ** 0.5)
+                    "lower_band": avg - sdfactor * (sd_sum ** 0.5),
                 }
 
             idx += 1
 
-        data = {
-            "data": res,
-            "length": idx - window
-        }
+        data = {"data": res, "length": idx - window}
 
         return jsonify(data)
 
@@ -127,7 +124,8 @@ def BBands():
 #     "context": {
 #         "ticker": "MSFT",
 #         "start": "2018-01-01",
-#         "end": "2020-11-30"
+#         "end": "2020-11-30",
+#         "window": 30
 #     }
 # }
 
@@ -141,6 +139,8 @@ def RSIndex():
         values = yf.Ticker(context["ticker"]).history(
             start=context["start"], end=context["end"]
         )
+
+        window = int(context["window"])
 
         # res = {}
 
@@ -167,30 +167,70 @@ def RSIndex():
         print(points_lost)
         print(points_gain)
 
-        pl_avg = sum(points_lost) * Decimal(-1) / len(points_lost)
-        pg_avg = sum(points_gain) / len(points_gain)
+        pl_avg_ar = []
+        pg_avg_ar = []
+        rs_ar = []
+        rsi_ar = []
+        date = []
 
-        print(pl_avg)
-        print(pg_avg)
+        for i in range(0, values.shape[0] - window):
+            pg_avg_ar.append(sum(points_gain[i : i + window]) / window)
+            pl_avg_ar.append(sum(points_lost[i : i + window]) * Decimal(-1) / window)
 
-        rs = pg_avg / pl_avg
+        for i in range(0, len(pg_avg_ar)):
+            rs_ar.append(str(pg_avg_ar[i] / pl_avg_ar[i]))
+            rsi_ar.append(str(100 - (100 / (1 + Decimal(rs_ar[i])))))
 
-        rsi = 100 - (100 / (1 + rs))
+        # pl_avg = sum(points_lost) * Decimal(-1) / len(points_lost)
+        # pg_avg = sum(points_gain) / len(points_gain)
+
+        # print(pl_avg)
+        # print(pg_avg)
+
+        # rs = pg_avg / pl_avg
+
+        # rsi = 100 - (100 / (1 + rs))
 
         pg = {}
         pl = {}
+        data_log = {}
+        date = []
 
-        for i in range(0, len(points_gain)):
-            pg[i] = str(points_gain[i])
+        for i in range(window, values.shape[0]):
+            date.append(values.iloc[i].name.strftime("%Y-%m-%d"))
 
-        for i in range(0, len(points_lost)):
-            pl[i] = str(points_lost[i])
+        for i in range(0, values.shape[0] - window):
+            data_log[i] = {
+                "Date": date[i],
+                "RS": rs_ar[i],
+                "RSI": rsi_ar[i],
+            }
+
+        signal = {}
+        for i in range(0, len(data_log)):
+            if Decimal(data_log[i]["RSI"]) > Decimal(0) and Decimal(data_log[i]["RSI"]) < Decimal(30):
+                signal[i] = {
+                    "Date": values.iloc[i].name.strftime("%Y-%m-%d"),
+                    "Signal": "1",
+                }
+            elif Decimal(data_log[i]["RSI"]) > Decimal(70) and Decimal(data_log[i]["RSI"]) < Decimal (100):
+                signal[i] = {
+                    "Date": values.iloc[i].name.strftime("%Y-%m-%d"),
+                    "Signal": "-1",
+                }
+            else:
+                pass
+
+        
+
+       
+        #     pl[i] = str(points_lost[i])
 
         data = {
-            "points-gain": pg,
-            "points_lost": pl,
-            "rs": str(rs),
-            "rsi": str(rsi),
+            "data": data_log,
+            "data_len": len(data_log),
+            "signal": signal,
+            "signal_len": len(signal),
         }
 
         return jsonify(data)
@@ -205,6 +245,7 @@ def RSIndex():
 #         "end": "2020-11-30"
 #     }
 # }
+
 
 @app.route("/getMACD", methods=["POST"])
 @cross_origin()
@@ -251,9 +292,7 @@ def get_MACD():
 
         except:
             print("Date range less than 1 month")
-            data = {
-                "Error" : "no Data"
-            }
+            data = {"Error": "no Data"}
             return
 
 
