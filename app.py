@@ -125,7 +125,9 @@ def BBands():
 #         "ticker": "MSFT",
 #         "start": "2018-01-01",
 #         "end": "2020-11-30",
-#         "window": 30
+#         "window": 30,
+#         "upper_band" : 70,
+#         "lower_band" : 30
 #     }
 # }
 
@@ -141,14 +143,8 @@ def RSIndex():
         )
 
         window = int(context["window"])
-
-        # res = {}
-
-        # for i in range(0, values.shape[0]):
-        #     res[i] = {
-        #         "date": values.iloc[i].name.strftime("%Y-%m-%d"),
-        #         "close": values.iloc[i]["Close"],
-        #     }
+        upper_band = int(context["upper_band"])
+        lower_band = int(context["lower_band"])
 
         points_gain = []
         points_lost = []
@@ -203,14 +199,14 @@ def RSIndex():
         for i in range(0, len(data_log)):
             if Decimal(data_log[i]["RSI"]) > Decimal(0) and Decimal(
                 data_log[i]["RSI"]
-            ) < Decimal(30):
+            ) < Decimal(lower_band):
                 signals.append(
                     {
                         "date": values.iloc[i].name.strftime("%Y-%m-%d"),
                         "signal": "1",
                     }
                 )
-            elif Decimal(data_log[i]["RSI"]) > Decimal(70) and Decimal(
+            elif Decimal(data_log[i]["RSI"]) > Decimal(upper_band) and Decimal(
                 data_log[i]["RSI"]
             ) < Decimal(100):
                 signals.append(
@@ -230,8 +226,6 @@ def RSIndex():
                 ordered_signals.append(signals[i])
                 selling = False
 
-        #     pl[i] = str(points_lost[i])
-
         data = {
             "data": data_log,
             "data_len": len(data_log),
@@ -248,9 +242,14 @@ def RSIndex():
 #     "context": {
 #         "ticker": "MSFT",
 #         "start": "2018-01-01",
-#         "end": "2020-11-30"
+#         "end": "2020-11-30",
+##        "upper_band" : 70,
+#         "lower_band" : 30,
+#         "buy_lim"  : 10,
+#         "sell_lim" : -10
 #     }
 # }
+
 
 
 @app.route("/getMACD", methods=["POST"])
@@ -263,6 +262,11 @@ def get_MACD():
             start=context["start"], end=context["end"]
         )
 
+        upper_band = int(context["upper_band"])
+        lower_band = int(context["lower_band"])
+        buy_lim = int(context["buy_lim"])
+        sell_lim = int(context["sell_lim"])
+
         daily_close = []
 
         for i in range(0, values.shape[0]):
@@ -270,36 +274,95 @@ def get_MACD():
                 Decimal(values.iloc[i]["Close"]),
             )
 
-        tweleve_day_ma = []
-        twentysix_day_ma = []
+        lower_lim_ma = []
+        upper_lim_ma = []
+        date = []
 
         macd_val = []
         mv = {}
+        signals = []
+        macd_selling = False
+        ordered_signals = []
 
         data = {}
 
+       
+
         try:
-            for i in range(0, values.shape[0] - 12):
-                tweleve_day_ma.append(sum(daily_close[i : i + 12]) / 12)
+            for i in range(0, values.shape[0] - lower_band):
+                lower_lim_ma.append(sum(daily_close[i : i + lower_band]) / lower_band)
+            
+            print('step1')
 
-            for i in range(0, values.shape[0] - 26):
-                twentysix_day_ma.append(sum(daily_close[i : i + 26]) / 26)
+            for i in range(0, values.shape[0] - upper_band):
+                upper_lim_ma.append(sum(daily_close[i : i + upper_band]) / upper_band)
+            
+            
 
-            for i in range(0, len(twentysix_day_ma)):
-                macd_val.append(tweleve_day_ma[i + 14] - twentysix_day_ma[i])
+            for i in range(0, len(upper_lim_ma)):
+                macd_val.append(
+                    lower_lim_ma[i + (upper_band - lower_band)] - upper_lim_ma[i]
+                )
+            print('step2')
 
+            for i in range(upper_band - lower_band, values.shape[0]):
+                date.append(values.iloc[i].name.strftime("%Y-%m-%d"))
+
+            print('stepdate')
             for i in range(0, len(macd_val)):
-                mv[i] = str(macd_val[i])
+                mv[i] = {
+                    "macd": str(macd_val[i]),
+                    "date": date[i],
+                }
+
+            print(mv)
+            
+            print('step4')
+
+
+            for i in range(0, len(mv)):
+                print('hi')
+                if Decimal(mv[i]["macd"]) > Decimal(buy_lim):
+                    print("first case")
+                    signals.append(
+                        {
+                            "date": mv[i]['date'],
+                            "signal": "1",
+                        }
+                    )
+                if Decimal(mv[i]["macd"]) < Decimal(sell_lim):
+                    print("second case")
+                    signals.append(
+                        {
+                            "date": mv[i]['date'],
+                            "signal": "-1",
+                        }
+                    )
+                else:
+                    pass
+            print('step4pass')
+
+            for i in range(0, len(signals)):
+                if signals[i]["signal"] == "1" and macd_selling == False:
+                    ordered_signals.append(signals[i])
+                    macd_selling = True
+                elif signals[i]["signal"] == "-1" and macd_selling == True:
+                    ordered_signals.append(signals[i])
+                    macd_selling = False
 
             data = {
-                "MACD Values": mv,
+                "data": mv,
+                "data_len": len(mv),
+                "ordered_signal": ordered_signals,
+                "ordered_ signals_len": len(ordered_signals),
             }
+
             return jsonify(data)
 
         except:
             print("Date range less than 1 month")
             data = {"Error": "no Data"}
-            return
+            return data
 
 
 if __name__ == "__main__":
