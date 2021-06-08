@@ -206,31 +206,49 @@ def RSIndex():
                 "RSI": rsi_ar[i],
             }
 
-        signal = {}
+        signals = []
+        ordered_signals = []
+        buy_signals = []
+        sell_signals = []
         for i in range(0, len(data_log)):
             if Decimal(data_log[i]["RSI"]) > Decimal(0) and Decimal(data_log[i]["RSI"]) < Decimal(30):
-                signal[i] = {
+                buy_signals.append ({
                     "Date": values.iloc[i].name.strftime("%Y-%m-%d"),
                     "Signal": "1",
-                }
+                })
+                signals.append({
+                    "Date": values.iloc[i].name.strftime("%Y-%m-%d"),
+                    "Signal": "1",
+                })
             elif Decimal(data_log[i]["RSI"]) > Decimal(70) and Decimal(data_log[i]["RSI"]) < Decimal (100):
-                signal[i] = {
+                sell_signals.append({
                     "Date": values.iloc[i].name.strftime("%Y-%m-%d"),
                     "Signal": "-1",
-                }
+                })
+                signals.append({
+                    "Date": values.iloc[i].name.strftime("%Y-%m-%d"),
+                    "Signal": "-1",
+                })
             else:
                 pass
-
+        
+        # for i in range(0, len(data_log)):
+        #     signals.append(buy_signals)
+            
+        
+        
         
 
-       
+
         #     pl[i] = str(points_lost[i])
 
         data = {
             "data": data_log,
             "data_len": len(data_log),
-            "signal": signal,
-            "signal_len": len(signal),
+            "signals": signals,
+            # "signal_len": len(signal),
+            "sell_signal": sell_signals,
+            "sell_signal_len" : len(sell_signals)
         }
 
         return jsonify(data)
