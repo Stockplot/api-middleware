@@ -181,16 +181,6 @@ def RSIndex():
             rs_ar.append(str(pg_avg_ar[i] / pl_avg_ar[i]))
             rsi_ar.append(str(100 - (100 / (1 + Decimal(rs_ar[i])))))
 
-        # pl_avg = sum(points_lost) * Decimal(-1) / len(points_lost)
-        # pg_avg = sum(points_gain) / len(points_gain)
-
-        # print(pl_avg)
-        # print(pg_avg)
-
-        # rs = pg_avg / pl_avg
-
-        # rsi = 100 - (100 / (1 + rs))
-
         pg = {}
         pl = {}
         data_log = {}
@@ -208,47 +198,45 @@ def RSIndex():
 
         signals = []
         ordered_signals = []
-        buy_signals = []
-        sell_signals = []
+        selling = False
+
         for i in range(0, len(data_log)):
-            if Decimal(data_log[i]["RSI"]) > Decimal(0) and Decimal(data_log[i]["RSI"]) < Decimal(30):
-                buy_signals.append ({
-                    "Date": values.iloc[i].name.strftime("%Y-%m-%d"),
-                    "Signal": "1",
-                })
-                signals.append({
-                    "Date": values.iloc[i].name.strftime("%Y-%m-%d"),
-                    "Signal": "1",
-                })
-            elif Decimal(data_log[i]["RSI"]) > Decimal(70) and Decimal(data_log[i]["RSI"]) < Decimal (100):
-                sell_signals.append({
-                    "Date": values.iloc[i].name.strftime("%Y-%m-%d"),
-                    "Signal": "-1",
-                })
-                signals.append({
-                    "Date": values.iloc[i].name.strftime("%Y-%m-%d"),
-                    "Signal": "-1",
-                })
+            if Decimal(data_log[i]["RSI"]) > Decimal(0) and Decimal(
+                data_log[i]["RSI"]
+            ) < Decimal(30):
+                signals.append(
+                    {
+                        "date": values.iloc[i].name.strftime("%Y-%m-%d"),
+                        "signal": "1",
+                    }
+                )
+            elif Decimal(data_log[i]["RSI"]) > Decimal(70) and Decimal(
+                data_log[i]["RSI"]
+            ) < Decimal(100):
+                signals.append(
+                    {
+                        "date": values.iloc[i].name.strftime("%Y-%m-%d"),
+                        "signal": "-1",
+                    }
+                )
             else:
                 pass
-        
-        # for i in range(0, len(data_log)):
-        #     signals.append(buy_signals)
-            
-        
-        
-        
 
+        for i in range(0, len(signals)):
+            if signals[i]["signal"] == "1" and selling == False:
+                ordered_signals.append(signals[i])
+                selling = True
+            elif signals[i]["signal"] == "-1" and selling == True:
+                ordered_signals.append(signals[i])
+                selling = False
 
         #     pl[i] = str(points_lost[i])
 
         data = {
             "data": data_log,
             "data_len": len(data_log),
-            "signals": signals,
-            # "signal_len": len(signal),
-            "sell_signal": sell_signals,
-            "sell_signal_len" : len(sell_signals)
+            "orderd_signals": ordered_signals,
+            "ordered_signals_len": len(ordered_signals),
         }
 
         return jsonify(data)
