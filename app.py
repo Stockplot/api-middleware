@@ -284,8 +284,8 @@ def RSIndex():
 #         "ticker": "MSFT",
 #         "start": "2018-01-01",
 #         "end": "2020-11-30",
-##        "upper_band" : 70,
-#         "lower_band" : 30,
+##        "upper_band" : 26,
+#         "lower_band" : 12,
 #         "buy_lim"  : 10,
 #         "sell_lim" : -10
 #     }
@@ -306,6 +306,7 @@ def get_MACD():
         lower_band = int(context["lower_band"])
         buy_lim = int(context["buy_lim"])
         sell_lim = int(context["sell_lim"])
+        liquid_amount = int(context["investment"])
 
         daily_close = []
 
@@ -321,8 +322,9 @@ def get_MACD():
         macd_val = []
         mv = {}
         signals = []
-        macd_selling = False
+        selling = False
         ordered_signals = []
+        close_val =[]
 
         data = {}
 
@@ -330,7 +332,7 @@ def get_MACD():
             for i in range(0, values.shape[0] - lower_band):
                 lower_lim_ma.append(sum(daily_close[i : i + lower_band]) / lower_band)
 
-            print("step1")
+            # print("step1")
 
             for i in range(0, values.shape[0] - upper_band):
                 upper_lim_ma.append(sum(daily_close[i : i + upper_band]) / upper_band)
@@ -339,21 +341,24 @@ def get_MACD():
                 macd_val.append(
                     lower_lim_ma[i + (upper_band - lower_band)] - upper_lim_ma[i]
                 )
-            print("step2")
+            # print("step2")
 
             for i in range(upper_band - lower_band, values.shape[0]):
                 date.append(values.iloc[i].name.strftime("%Y-%m-%d"))
+                close_val.append(values.iloc[i]["Close"])
 
-            print("stepdate")
+                
+
+            # print("stepdate")
             for i in range(0, len(macd_val)):
                 mv[i] = {
                     "macd": str(macd_val[i]),
                     "date": date[i],
+                    "close": close_val[i]
                 }
 
-            print(mv)
 
-            print("step4")
+            # print("step4")
 
             for i in range(0, len(mv)):
                 print("hi")
@@ -363,6 +368,9 @@ def get_MACD():
                         {
                             "date": mv[i]["date"],
                             "signal": "1",
+                            "close": mv[i]["close"],
+                            "macd" : mv[i]["macd"],
+
                         }
                     )
                 if Decimal(mv[i]["macd"]) < Decimal(sell_lim):
@@ -371,19 +379,57 @@ def get_MACD():
                         {
                             "date": mv[i]["date"],
                             "signal": "-1",
+                            "close": mv[i]["close"],
+                            "macd" : mv[i]["macd"],
                         }
                     )
                 else:
                     pass
             print("step4pass")
+            invested_amount = 0
+            num_shares = 0
+            last_total = liquid_amount
+
+
 
             for i in range(0, len(signals)):
-                if signals[i]["signal"] == "1" and macd_selling == False:
-                    ordered_signals.append(signals[i])
-                    macd_selling = True
-                elif signals[i]["signal"] == "-1" and macd_selling == True:
-                    ordered_signals.append(signals[i])
-                    macd_selling = False
+                if signals[i]["signal"] == "1" and selling == False:
+                    num_shares = liquid_amount // signals[i]["close"]
+                    liquid_amount -= num_shares * signals[i]["close"]
+                    invested_amount += num_shares * signals[i]["close"]
+                    total_amount = liquid_amount + invested_amount
+                    pnl = total_amount - last_total
+                    last_total = total_amount
+                    ordered_signals.append(
+                        {
+                            "date": signals[i]["date"],
+                            "signal": signals[i]["signal"],
+                            "price": signals[i]["close"],
+                            "invested_amount": invested_amount,
+                            "liquid_amount": liquid_amount,
+                            "total_amount": total_amount,
+                            "pnl": pnl,
+                        }
+                    )
+                    selling = True
+                elif signals[i]["signal"] == "-1" and selling == True:
+                    liquid_amount += num_shares * signals[i]["close"]
+                    invested_amount = 0
+                    total_amount = liquid_amount + invested_amount
+                    pnl = total_amount - last_total
+                    last_total = total_amount
+                    ordered_signals.append(
+                        {
+                            "date": signals[i]["date"],
+                            "signal": signals[i]["signal"],
+                            "price": signals[i]["close"],
+                            "invested_amount": invested_amount,
+                            "liquid_amount": liquid_amount,
+                            "total_amount": total_amount,
+                            "pnl": pnl,
+                        }
+                    )
+                    selling = False
 
             data = {
                 "data": mv,
