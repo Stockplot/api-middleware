@@ -178,16 +178,19 @@ def RSIndex():
         pg = {}
         pl = {}
         data_log = {}
+        close_val = []
         date = []
 
         for i in range(window, values.shape[0]):
             date.append(values.iloc[i].name.strftime("%Y-%m-%d"))
+            close_val.append(values.iloc[i]["Close"])
 
         for i in range(0, values.shape[0] - window):
             data_log[i] = {
-                "Date": date[i],
+                "date": date[i],
                 "RS": rs_ar[i],
                 "RSI": rsi_ar[i],
+                "close": close_val[i],
             }
 
         signals = []
@@ -204,19 +207,21 @@ def RSIndex():
             ) < Decimal(lower_band):
                 signals.append(
                     {
-                        "date": values.iloc[i].name.strftime("%Y-%m-%d"),
+                        "date": data_log[i]["date"],
                         "signal": "1",
-                        "close": values.iloc[i]["Close"]
+                        "close": data_log[i]["close"],
+                        "rsi": data_log[i]["RSI"],
                     }
                 )
-            elif Decimal(data_log[i]["RSI"]) > Decimal(upper_band) and Decimal(
+            if Decimal(data_log[i]["RSI"]) > Decimal(upper_band) and Decimal(
                 data_log[i]["RSI"]
             ) < Decimal(100):
                 signals.append(
                     {
-                        "date": values.iloc[i].name.strftime("%Y-%m-%d"),
+                        "date": data_log[i]["date"],
                         "signal": "-1",
-                        "close": values.iloc[i]["Close"]
+                        "close": data_log[i]["close"],
+                        "rsi": data_log[i]["RSI"],
                     }
                 )
             else:
@@ -230,34 +235,41 @@ def RSIndex():
                 total_amount = liquid_amount + invested_amount
                 pnl = total_amount - last_total
                 last_total = total_amount
-                ordered_signals.append({
-                    "date": signals[i]["date"],
-                    "signal": signals[i]["signal"],
-                    "invested_amount": invested_amount,
-                    "liquid_amount": liquid_amount,
-                    "total_amount": total_amount,
-                    "pnl": pnl
-                    })
+                ordered_signals.append(
+                    {
+                        "date": signals[i]["date"],
+                        "signal": signals[i]["signal"],
+                        "price": signals[i]["close"],
+                        "invested_amount": invested_amount,
+                        "liquid_amount": liquid_amount,
+                        "total_amount": total_amount,
+                        "pnl": pnl,
+                    }
+                )
                 selling = True
             elif signals[i]["signal"] == "-1" and selling == True:
                 liquid_amount += num_shares * signals[i]["close"]
-                invested_amount = 0 
+                invested_amount = 0
                 total_amount = liquid_amount + invested_amount
                 pnl = total_amount - last_total
                 last_total = total_amount
-                ordered_signals.append({
-                    "date": signals[i]["date"],
-                    "signal": signals[i]["signal"],
-                    "invested_amount": invested_amount,
-                    "liquid_amount": liquid_amount,
-                    "total_amount": total_amount,
-                    "pnl": pnl
-                    })
+                ordered_signals.append(
+                    {
+                        "date": signals[i]["date"],
+                        "signal": signals[i]["signal"],
+                        "price": signals[i]["close"],
+                        "invested_amount": invested_amount,
+                        "liquid_amount": liquid_amount,
+                        "total_amount": total_amount,
+                        "pnl": pnl,
+                    }
+                )
                 selling = False
 
         data = {
             "data": data_log,
             "data_len": len(data_log),
+            # "signal": signals,
             "orderd_signals": ordered_signals,
             "ordered_signals_len": len(ordered_signals),
         }
@@ -278,7 +290,6 @@ def RSIndex():
 #         "sell_lim" : -10
 #     }
 # }
-
 
 
 @app.route("/getMACD", methods=["POST"])
@@ -315,29 +326,25 @@ def get_MACD():
 
         data = {}
 
-       
-
         try:
             for i in range(0, values.shape[0] - lower_band):
                 lower_lim_ma.append(sum(daily_close[i : i + lower_band]) / lower_band)
-            
-            print('step1')
+
+            print("step1")
 
             for i in range(0, values.shape[0] - upper_band):
                 upper_lim_ma.append(sum(daily_close[i : i + upper_band]) / upper_band)
-            
-            
 
             for i in range(0, len(upper_lim_ma)):
                 macd_val.append(
                     lower_lim_ma[i + (upper_band - lower_band)] - upper_lim_ma[i]
                 )
-            print('step2')
+            print("step2")
 
             for i in range(upper_band - lower_band, values.shape[0]):
                 date.append(values.iloc[i].name.strftime("%Y-%m-%d"))
 
-            print('stepdate')
+            print("stepdate")
             for i in range(0, len(macd_val)):
                 mv[i] = {
                     "macd": str(macd_val[i]),
@@ -345,17 +352,16 @@ def get_MACD():
                 }
 
             print(mv)
-            
-            print('step4')
 
+            print("step4")
 
             for i in range(0, len(mv)):
-                print('hi')
+                print("hi")
                 if Decimal(mv[i]["macd"]) > Decimal(buy_lim):
                     print("first case")
                     signals.append(
                         {
-                            "date": mv[i]['date'],
+                            "date": mv[i]["date"],
                             "signal": "1",
                         }
                     )
@@ -363,13 +369,13 @@ def get_MACD():
                     print("second case")
                     signals.append(
                         {
-                            "date": mv[i]['date'],
+                            "date": mv[i]["date"],
                             "signal": "-1",
                         }
                     )
                 else:
                     pass
-            print('step4pass')
+            print("step4pass")
 
             for i in range(0, len(signals)):
                 if signals[i]["signal"] == "1" and macd_selling == False:
