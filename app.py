@@ -145,6 +145,7 @@ def RSIndex():
         window = int(context["window"])
         upper_band = int(context["upper_band"])
         lower_band = int(context["lower_band"])
+        liquid_amount = int(context["investment"])
 
         points_gain = []
         points_lost = []
@@ -159,9 +160,6 @@ def RSIndex():
             else:
                 points_lost.append(change)
                 points_gain.append(Decimal(0))
-
-        print(points_lost)
-        print(points_gain)
 
         pl_avg_ar = []
         pg_avg_ar = []
@@ -196,6 +194,10 @@ def RSIndex():
         ordered_signals = []
         selling = False
 
+        invested_amount = 0
+        num_shares = 0
+        last_total = liquid_amount
+
         for i in range(0, len(data_log)):
             if Decimal(data_log[i]["RSI"]) > Decimal(0) and Decimal(
                 data_log[i]["RSI"]
@@ -204,6 +206,7 @@ def RSIndex():
                     {
                         "date": values.iloc[i].name.strftime("%Y-%m-%d"),
                         "signal": "1",
+                        "close": values.iloc[i]["Close"]
                     }
                 )
             elif Decimal(data_log[i]["RSI"]) > Decimal(upper_band) and Decimal(
@@ -213,6 +216,7 @@ def RSIndex():
                     {
                         "date": values.iloc[i].name.strftime("%Y-%m-%d"),
                         "signal": "-1",
+                        "close": values.iloc[i]["Close"]
                     }
                 )
             else:
@@ -220,10 +224,35 @@ def RSIndex():
 
         for i in range(0, len(signals)):
             if signals[i]["signal"] == "1" and selling == False:
-                ordered_signals.append(signals[i])
+                num_shares = liquid_amount // signals[i]["close"]
+                liquid_amount -= num_shares * signals[i]["close"]
+                invested_amount += num_shares * signals[i]["close"]
+                total_amount = liquid_amount + invested_amount
+                pnl = total_amount - last_total
+                last_total = total_amount
+                ordered_signals.append({
+                    "date": signals[i]["date"],
+                    "signal": signals[i]["signal"],
+                    "invested_amount": invested_amount,
+                    "liquid_amount": liquid_amount,
+                    "total_amount": total_amount,
+                    "pnl": pnl
+                    })
                 selling = True
             elif signals[i]["signal"] == "-1" and selling == True:
-                ordered_signals.append(signals[i])
+                liquid_amount += num_shares * signals[i]["close"]
+                invested_amount = 0 
+                total_amount = liquid_amount + invested_amount
+                pnl = total_amount - last_total
+                last_total = total_amount
+                ordered_signals.append({
+                    "date": signals[i]["date"],
+                    "signal": signals[i]["signal"],
+                    "invested_amount": invested_amount,
+                    "liquid_amount": liquid_amount,
+                    "total_amount": total_amount,
+                    "pnl": pnl
+                    })
                 selling = False
 
         data = {
