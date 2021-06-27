@@ -1,4 +1,6 @@
 import yfinance as yf
+import pandas as pd
+import numpy as np
 from flask import Flask
 from flask import request
 from flask import json
@@ -492,6 +494,86 @@ def get_MACD():
             print("Date range less than 1 month")
             data = {"Error": "no Data"}
             return data
+
+
+
+@app.route("/getGoldenCross", methods=["POST"])
+@cross_origin()
+def get_GoldenCross():
+    context = request.json["context"]
+    if request.method == "POST":
+
+        values = yf.Ticker(context["ticker"]).history(
+            start=context["start"], end=context["end"]
+        )
+
+        stock_df = values['Close']
+        stock_df = pd.DataFrame(values) # convert Series object to dataframe 
+        stock_df.columns = {'Close Price'} # assign new colun name
+        stock_df.dropna(axis = 0, inplace = True) # remove any null rows 
+
+        #short_window, long_window, moving_avg
+        short_window = int(context["short_window"])
+        long_window = int(context["long_window"])
+        moving_avg = str(context["moving_avg"])
+
+        # column names for long and short moving average columns
+        short_window_col = str(short_window) + '_' + moving_avg
+        long_window_col = str(long_window) + '_' + moving_avg  
+    
+        if moving_avg == 'SMA':
+            # Create a short simple moving average column
+            stock_df[short_window_col] = stock_df['Close Price'].rolling(window = short_window, min_periods = 1).mean()
+
+            # Create a long simple moving average column
+            stock_df[long_window_col] = stock_df['Close Price'].rolling(window = long_window, min_periods = 1).mean()
+
+        elif moving_avg == 'EMA':
+            # Create short exponential moving average column
+            stock_df[short_window_col] = stock_df['Close Price'].ewm(span = short_window, adjust = False).mean()
+
+            # Create a long exponential moving average column
+            stock_df[long_window_col] = stock_df['Close Price'].ewm(span = long_window, adjust = False).mean()
+
+        # create a new column 'Signal' such that if faster moving average is greater than slower moving average 
+        # then set Signal as 1 else 0.
+        stock_df['Signal'] = 0.0  
+        stock_df['Signal'] = np.where(stock_df[short_window_col] > stock_df[long_window_col], 1.0, 0.0) 
+
+        # create a new column 'Position' which is a day-to-day difference of the 'Signal' column. 
+        stock_df['Position'] = stock_df['Signal'].diff()
+
+        df_pos = stock_df[(stock_df['Position'] == 1) | (stock_df['Position'] == -1)]
+        #df_pos['Position'] = df_pos['Position'].apply(lambda x: 'Buy' if x == 1 else 'Sell')
+        res = []
+        for i in stock_df.index:
+            dic = {}
+            dic['close'] = stock_df.loc[i, 'Close Price']
+            dic['date'] = i.date()
+            dic['short'] = stock_df.loc[i, short_window_col]
+            dic['long'] = stock_df.loc[i, long_window_col]
+            res.append(dic)
+
+        data_length = len(stock_df)
+
+        ordered_signals = []
+        for i in df_pos.index:
+            dic = {}
+            dic['date'] = i.date()
+            dic['signal'] = df_pos.loc[i, 'Position']
+            ordered_signals.append(dic)
+
+        ordered_signals_len = len(df_pos)        
+        
+
+        data = {
+            "data": res, 
+            "data_length": data_length,
+            "ordered_signals": ordered_signals,
+            "ordered_signals_len": ordered_signals_len,
+            }
+
+        return jsonify(data)
 
 
 if __name__ == "__main__":
