@@ -497,6 +497,20 @@ def get_MACD():
 
 
 
+### Sample request body for /getGoldenCross
+# Note - make sure gap b/w start -end > long_window; long_window > short_window
+# {
+#     "context": {
+#         "ticker": "MSFT",
+#         "start": "2018-01-01",
+#         "end": "2020-11-30",
+##        "short_window" : 20,
+#         "long_window" : 50,
+#         "moving_avg"  : SMA
+#     }
+# }
+
+
 @app.route("/getGoldenCross", methods=["POST"])
 @cross_origin()
 def get_GoldenCross():
@@ -515,7 +529,7 @@ def get_GoldenCross():
         #short_window, long_window, moving_avg
         short_window = int(context["short_window"])
         long_window = int(context["long_window"])
-        moving_avg = str(context["moving_avg"])
+        moving_avg = str(context["moving_avg"]) #SMA/EMA
 
         # column names for long and short moving average columns
         short_window_col = str(short_window) + '_' + moving_avg
