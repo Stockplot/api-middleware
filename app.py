@@ -506,7 +506,7 @@ def get_MACD():
 #         "end": "2020-11-30",
 ##        "short_window" : 20,
 #         "long_window" : 50,
-#         "moving_avg"  : SMA
+#         "moving_avg"  : "SMA"
 #     }
 # }
 
@@ -521,7 +521,7 @@ def get_GoldenCross():
             start=context["start"], end=context["end"]
         )
 
-        stock_df = values['Close']
+        values = values['Close']
         stock_df = pd.DataFrame(values) # convert Series object to dataframe 
         stock_df.columns = {'Close Price'} # assign new colun name
         stock_df.dropna(axis = 0, inplace = True) # remove any null rows 
