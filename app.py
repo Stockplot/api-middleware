@@ -504,9 +504,10 @@ def get_MACD():
 #         "ticker": "MSFT",
 #         "start": "2018-01-01",
 #         "end": "2020-11-30",
-##        "short_window" : 20,
+#         "short_window" : 20,
 #         "long_window" : 50,
 #         "moving_avg"  : "SMA"
+#         "investment": 10000
 #     }
 # }
 
@@ -570,11 +571,33 @@ def get_GoldenCross():
 
         data_length = len(stock_df)
 
+        liquid_amount = int(context["investment"])
+        invested_amount = 0
+        total_amount = liquid_amount
+        num_shares = 0
+
         ordered_signals = []
         for i in df_pos.index:
             dic = {}
             dic['date'] = i.date()
             dic['signal'] = df_pos.loc[i, 'Position']
+
+            close = df_pos.loc[i, 'Close Price']
+
+            if dic['signal'] == 1.0:
+                num_shares = liquid_amount // close
+                liquid_amount -= num_shares * close
+                invested_amount += num_shares * close
+            else:
+                liquid_amount += num_shares * close
+                invested_amount = 0
+
+            dic['liquid_amount'] = liquid_amount
+            dic['invested_amount'] = invested_amount
+            dic['pnl'] = liquid_amount + invested_amount - total_amount
+            total_amount = liquid_amount + invested_amount
+            dic['total_amount'] = total_amount
+
             ordered_signals.append(dic)
 
         ordered_signals_len = len(df_pos)        
